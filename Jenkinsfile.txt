@@ -1,0 +1,14 @@
+pipeline{
+    agent any
+    environment{
+        staging_server="10.232.82.213"
+    }
+    stages{
+        stage('Deploy to Remote'){
+            steps{
+                sh scp -r ${WORKSPACE}${fil} root@${staging_server}:/var/www/html/test/
+           
+            }
+        }
+    }
+}
