@@ -66,19 +66,6 @@ pipeline {
             }
         }
 
-        stage('Database Migration') {
-            steps {
-                sshagent(['6804e923-6c7a-4ce7-a15f-e5d2464ef74e']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no \
-                        ${REMOTE_USER}@${REMOTE_HOST} '
-                            cd ${APP_DIR} &&
-                            php artisan migrate --force
-                        '
-                    """
-                }
-            }
-        }
 
         stage('Set Permissions') {
             steps {
