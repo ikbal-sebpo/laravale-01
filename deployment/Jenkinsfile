@@ -1,0 +1,20 @@
+pipeline {
+    agent any
+
+    environment {
+        STAGING_SERVER = "10.232.82.213"
+        SSH_PORT = "221"
+        FILES = "."
+    }
+
+    stages {
+        stage('Deploy to Remote') {
+            steps {
+                sh """
+                    scp -P ${SSH_PORT} -r ${FILES} root@${STAGING_SERVER}:/var/www/html/test/
+                """
+            }
+        }
+    }
+}
+
