@@ -17,7 +17,7 @@ pipeline {
 
         stage('Deploy Application') {
             steps {
-                sshagent(['kora']) {
+                sshagent(['6804e923-6c7a-4ce7-a15f-e5d2464ef74e']) {
                     sh """
                         rsync -avz --delete \
                         --exclude='.git' \
@@ -31,7 +31,7 @@ pipeline {
 
         stage('Install Composer Dependencies') {
             steps {
-                sshagent(['kora']) {
+                sshagent(['6804e923-6c7a-4ce7-a15f-e5d2464ef74e']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no \
                         ${REMOTE_USER}@${REMOTE_HOST} '
@@ -47,7 +47,7 @@ pipeline {
 
         stage('Laravel Optimization') {
             steps {
-                sshagent(['kora']) {
+                sshagent(['6804e923-6c7a-4ce7-a15f-e5d2464ef74e']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no \
                         ${REMOTE_USER}@${REMOTE_HOST} '
@@ -68,7 +68,7 @@ pipeline {
 
         stage('Database Migration') {
             steps {
-                sshagent(['kora']) {
+                sshagent(['6804e923-6c7a-4ce7-a15f-e5d2464ef74e']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no \
                         ${REMOTE_USER}@${REMOTE_HOST} '
@@ -82,7 +82,7 @@ pipeline {
 
         stage('Set Permissions') {
             steps {
-                sshagent(['kora']) {
+                sshagent(['6804e923-6c7a-4ce7-a15f-e5d2464ef74e']) {
                     sh """
                         ssh -o StrictHostKeyChecking=no \
                         ${REMOTE_USER}@${REMOTE_HOST} '
