@@ -15,7 +15,7 @@ pipeline {
 
                         SERVER="10.232.82.220"
                         PORT="2221"
-                        REMOTE_PATH="/var/www/html/laravale-01"
+                        REMOTE_PATH="/var/www/html/laravale-02"
 
                         echo "Starting deployment..."
 
