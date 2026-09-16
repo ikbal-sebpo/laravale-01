@@ -3,18 +3,6 @@ pipeline {
 
     stages {
 
-        stage('Build') {
-            steps {
-                sh 'echo "Hello World"'
-
-                sh '''
-                    echo "Multiline shell steps works too"
-                    echo "Workspace:"
-                    ls -lah
-                '''
-            }
-        }
-
         stage('Deploy') {
             steps {
 
@@ -34,7 +22,7 @@ pipeline {
 
                         echo "Starting deployment..."
 
-                        echo "Copying files..."
+                        echo "Copying files to server..."
 
                         sshpass -p "$DEPLOY_PASSWORD" \
                         scp -P "$PORT" \
@@ -51,7 +39,7 @@ pipeline {
                         "cd $REMOTE_PATH && \
                          composer install --no-dev --optimize-autoloader"
 
-                        echo "Setting permissions..."
+                        echo "Setting Laravel permissions..."
 
                         sshpass -p "$DEPLOY_PASSWORD" \
                         ssh -p "$PORT" \
