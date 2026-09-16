@@ -30,7 +30,6 @@ pipeline {
                         ssh -p "$PORT" \
                         "$DEPLOY_USER@$SERVER" \
                         "cd $REMOTE_PATH && \
-                         composer install --no-dev --optimize-autoloader && \
                          php artisan optimize:clear && \
                          php artisan config:cache"
 
