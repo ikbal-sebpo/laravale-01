@@ -569,31 +569,90 @@ pipeline {
     // ================================================================
     // POST ACTIONS
     // ================================================================
-    post {
+// ================================================================
+// POST ACTIONS
+// ================================================================
+post {
 
-        success {
+    success {
 
-            echo """
-            ====================================
-            PIPELINE SUCCESS
-            ====================================
-            Build: ${env.BUILD_NUMBER}
-            Job:   ${env.JOB_NAME}
-            ====================================
-            """
-        }
+        echo """
+        ====================================
+        PIPELINE SUCCESS
+        ====================================
+        Build: ${env.BUILD_NUMBER}
+        Job:   ${env.JOB_NAME}
+        ====================================
+        """
+
+        emailext(
+            to: 'i.hossain@sebpo.com',
+            subject: "SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """
+Hello,
+
+The Jenkins pipeline completed successfully.
+
+====================================
+PIPELINE SUCCESS
+====================================
+
+Job       : ${env.JOB_NAME}
+Build     : #${env.BUILD_NUMBER}
+Status    : SUCCESS
+Version   : ${params.PRODUCTION_VERSION ?: 'N/A'}
+
+Build URL :
+${env.BUILD_URL}
+
+====================================
+
+Regards,
+Jenkins
+"""
+        )
+    }
 
 
-        failure {
+    failure {
 
-            echo """
-            ====================================
-            PIPELINE FAILED
-            ====================================
-            Build: ${env.BUILD_NUMBER}
-            Job:   ${env.JOB_NAME}
-            ====================================
-            """
-        }
+        echo """
+        ====================================
+        PIPELINE FAILED
+        ====================================
+        Build: ${env.BUILD_NUMBER}
+        Job:   ${env.JOB_NAME}
+        ====================================
+        """
+
+        emailext(
+            to: 'i.hossain@sebpo.com',
+            subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+            body: """
+Hello,
+
+The Jenkins pipeline has failed.
+
+====================================
+PIPELINE FAILED
+====================================
+
+Job       : ${env.JOB_NAME}
+Build     : #${env.BUILD_NUMBER}
+Status    : FAILED
+Version   : ${params.PRODUCTION_VERSION ?: 'N/A'}
+
+Build URL :
+${env.BUILD_URL}
+
+Please check the Jenkins console output for details.
+
+====================================
+
+Regards,
+Jenkins
+"""
+        )
     }
 }
+
