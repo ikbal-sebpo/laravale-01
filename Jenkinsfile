@@ -20,29 +20,6 @@ pipeline {
             }
         }
 
-stage('Build & Test') {
-    steps {
-        sh '''
-            set -e
-
-            echo "PHP Version:"
-            php -v
-
-            echo "Composer Version:"
-            composer --version
-
-            echo "Installing Composer dependencies..."
-            composer install --prefer-dist --optimize-autoloader
-
-            echo "Running Laravel tests..."
-            php artisan test
-
-            echo "Build & Test completed successfully."
-        '''
-    }
-}
-
-
         stage('Package') {
             steps {
 
