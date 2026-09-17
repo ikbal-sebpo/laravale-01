@@ -1,43 +1,22 @@
 pipeline {
-
     agent any
-
-    environment {
-
-        STAGING_SERVER = '10.232.82.220'
-        PROD_SERVER    = '10.232.82.222'
-
-        SSH_PORT       = '2221'
-        APP_DIR        = '/var/www/html/laravale-02'
-        PACKAGE        = 'build.tar.gz'
-    }
 
     stages {
 
-        stage('Checkout') {
+        stage('Build') {
             steps {
-                checkout scm
-            }
-        }
-
-        stage('Package') {
-            steps {
+                sh 'echo "Hello World"'
 
                 sh '''
-                    set -e
-
-                    echo "Creating deployment package..."
-
-                    tar --exclude='.git' \
-                        --exclude='.env' \
-                        --exclude='build.tar.gz' \
-                        --exclude='node_modules' \
-                        -czf build.tar.gz .
-
-                    ls -lh build.tar.gz
+                    echo "Multiline shell steps works too"
+                    echo "Workspace:"
+                    ls -lah
                 '''
             }
         }
+
+
+    stages {
 
         stage('Deploy Staging') {
             steps {
@@ -49,156 +28,152 @@ pipeline {
                 )]) {
 
                     sh '''
+                        #!/bin/bash
                         set -e
 
+                        SERVER="10.232.82.220"
+                        PORT="2221"
+                        REMOTE_PATH="/var/www/html/laravale-02"
+
                         echo "===================================="
-                        echo "Deploying to STAGING"
-                        echo "Server: $STAGING_SERVER"
+                        echo "Starting STAGING deployment..."
+                        echo "Server: $SERVER"
                         echo "===================================="
 
                         sshpass -p "$DEPLOY_PASSWORD" \
-                        scp -o StrictHostKeyChecking=no \
-                            -P "$SSH_PORT" \
-                            "$PACKAGE" \
-                            "$DEPLOY_USER@$STAGING_SERVER:/tmp/build.tar.gz"
+                        scp -P "$PORT" \
+                        -r "$WORKSPACE"/* \
+                        "$DEPLOY_USER@$SERVER:$REMOTE_PATH/"
 
-                        echo "Package uploaded to Staging."
+                        echo "Files copied to STAGING."
+
+                        sshpass -p "$DEPLOY_PASSWORD" \
+                        ssh -p "$PORT" \
+                        "$DEPLOY_USER@$SERVER" \
+                        "cd $REMOTE_PATH && \
+                         composer install --no-dev --optimize-autoloader && \
+                         chown -R apache:apache storage bootstrap/cache && \
+                         chmod -R 775 storage bootstrap/cache && \
+                         php artisan config:clear && \
+                         php artisan cache:clear && \
+                         php artisan view:clear && \
+                         php artisan route:clear && \
+                         php artisan config:cache"
+
+                        echo "STAGING deployment completed successfully."
                     '''
                 }
             }
         }
 
-        stage('Extract & Configure Staging') {
-            steps {
 
-                withCredentials([usernamePassword(
-                    credentialsId: 'almalinux-deploy',
-                    usernameVariable: 'DEPLOY_USER',
-                    passwordVariable: 'DEPLOY_PASSWORD'
-                )]) {
+stage('Deploy Production') {
+    steps {
 
-                    sh '''
-                        set -e
+        input message: 'Staging deployment successful. Deploy to Production?',
+              ok: 'Deploy Production'
 
-                        sshpass -p "$DEPLOY_PASSWORD" \
-                        ssh -o StrictHostKeyChecking=no \
-                            -p "$SSH_PORT" \
-                            "$DEPLOY_USER@$STAGING_SERVER" \
-                            "cd $APP_DIR && \
-                             tar -xzf /tmp/build.tar.gz && \
-                             composer install --no-dev --optimize-autoloader && \
-                             chown -R apache:apache storage bootstrap/cache && \
-                             chmod -R 775 storage bootstrap/cache && \
-                             php artisan config:clear && \
-                             php artisan cache:clear && \
-                             php artisan view:clear && \
-                             php artisan route:clear && \
-                             php artisan config:cache"
+        withCredentials([usernamePassword(
+            credentialsId: 'almalinux-deploy',
+            usernameVariable: 'DEPLOY_USER',
+            passwordVariable: 'DEPLOY_PASSWORD'
+        )]) {
 
-                        echo "Staging deployment completed."
-                    '''
-                }
-            }
-        }
+            sh '''
+                #!/bin/bash
+                set -e
 
-        stage('Staging Health Check') {
-            steps {
+                SERVER="10.232.82.222"
+                PORT="2221"
+                REMOTE_PATH="/var/www/html/laravale-02"
 
-                sh '''
-                    set -e
+                echo "===================================="
+                echo "Starting PRODUCTION deployment..."
+                echo "Server: $SERVER"
+                echo "===================================="
 
-                    echo "Checking Staging server..."
+                echo "Testing SSH connection..."
 
-                    curl -f -I --max-time 10 \
-                        http://10.232.82.220
+                sshpass -p "$DEPLOY_PASSWORD" \
+                ssh -o StrictHostKeyChecking=no \
+                    -p "$PORT" \
+                    "$DEPLOY_USER@$SERVER" \
+                    "echo SSH connection successful"
 
-                    echo "Staging health check passed."
-                '''
-            }
-        }
+                echo "Creating remote directory..."
 
-        stage('SysAdmin Approval') {
-            steps {
+                sshpass -p "$DEPLOY_PASSWORD" \
+                ssh -o StrictHostKeyChecking=no \
+                    -p "$PORT" \
+                    "$DEPLOY_USER@$SERVER" \
+                    "mkdir -p $REMOTE_PATH"
 
-                input(
-                    message: 'Staging Server OK? Deploy to Production?',
-                    ok: 'YES - DEPLOY PRODUCTION'
-                )
-            }
-        }
+                echo "Copying Laravel application..."
 
-        stage('Deploy Production') {
-            steps {
+                sshpass -p "$DEPLOY_PASSWORD" \
+                scp -o StrictHostKeyChecking=no \
+                    -P "$PORT" \
+                    -r \
+                    "$WORKSPACE/app" \
+                    "$WORKSPACE/bootstrap" \
+                    "$WORKSPACE/config" \
+                    "$WORKSPACE/database" \
+                    "$WORKSPACE/public" \
+                    "$WORKSPACE/resources" \
+                    "$WORKSPACE/routes" \
+                    "$WORKSPACE/storage" \
+                    "$WORKSPACE/tests" \
+                    "$WORKSPACE/artisan" \
+                    "$WORKSPACE/composer.json" \
+                    "$WORKSPACE/composer.lock" \
+                    "$DEPLOY_USER@$SERVER:$REMOTE_PATH/"
 
-                withCredentials([usernamePassword(
-                    credentialsId: 'almalinux-deploy',
-                    usernameVariable: 'DEPLOY_USER',
-                    passwordVariable: 'DEPLOY_PASSWORD'
-                )]) {
+                echo "Files copied successfully."
 
-                    sh '''
-                        set -e
+                echo "Installing Composer dependencies..."
 
-                        echo "===================================="
-                        echo "Deploying to PRODUCTION"
-                        echo "Server: $PROD_SERVER"
-                        echo "===================================="
+                sshpass -p "$DEPLOY_PASSWORD" \
+                ssh -o StrictHostKeyChecking=no \
+                    -p "$PORT" \
+                    "$DEPLOY_USER@$SERVER" \
+                    "cd $REMOTE_PATH && \
+                     composer install --no-dev --optimize-autoloader"
 
-                        echo "Testing Production SSH..."
+                echo "Setting Laravel permissions..."
 
-                        sshpass -p "$DEPLOY_PASSWORD" \
-                        ssh -o StrictHostKeyChecking=no \
-                            -p "$SSH_PORT" \
-                            "$DEPLOY_USER@$PROD_SERVER" \
-                            "echo Production SSH connection successful"
+                sshpass -p "$DEPLOY_PASSWORD" \
+                ssh -o StrictHostKeyChecking=no \
+                    -p "$PORT" \
+                    "$DEPLOY_USER@$SERVER" \
+                    "cd $REMOTE_PATH && \
+                     chown -R apache:apache storage bootstrap/cache && \
+                     chmod -R 775 storage bootstrap/cache"
 
-                        echo "Uploading package..."
+                echo "Clearing Laravel caches..."
 
-                        sshpass -p "$DEPLOY_PASSWORD" \
-                        scp -o StrictHostKeyChecking=no \
-                            -P "$SSH_PORT" \
-                            "$PACKAGE" \
-                            "$DEPLOY_USER@$PROD_SERVER:/tmp/build.tar.gz"
+                sshpass -p "$DEPLOY_PASSWORD" \
+                ssh -o StrictHostKeyChecking=no \
+                    -p "$PORT" \
+                    "$DEPLOY_USER@$SERVER" \
+                    "cd $REMOTE_PATH && \
+                     php artisan config:clear && \
+                     php artisan cache:clear && \
+                     php artisan view:clear && \
+                     php artisan route:clear"
 
-                        echo "Package uploaded to Production."
+                echo "Caching Laravel configuration..."
 
-                        echo "Extracting application..."
+                sshpass -p "$DEPLOY_PASSWORD" \
+                ssh -o StrictHostKeyChecking=no \
+                    -p "$PORT" \
+                    "$DEPLOY_USER@$SERVER" \
+                    "cd $REMOTE_PATH && \
+                     php artisan config:cache"
 
-                        sshpass -p "$DEPLOY_PASSWORD" \
-                        ssh -o StrictHostKeyChecking=no \
-                            -p "$SSH_PORT" \
-                            "$DEPLOY_USER@$PROD_SERVER" \
-                            "cd $APP_DIR && \
-                             tar -xzf /tmp/build.tar.gz && \
-                             composer install --no-dev --optimize-autoloader && \
-                             chown -R apache:apache storage bootstrap/cache && \
-                             chmod -R 775 storage bootstrap/cache && \
-                             php artisan config:clear && \
-                             php artisan cache:clear && \
-                             php artisan view:clear && \
-                             php artisan route:clear && \
-                             php artisan config:cache"
-
-                        echo "Production deployment completed successfully."
-                    '''
-                }
-            }
-        }
-
-        stage('Production Health Check') {
-            steps {
-
-                sh '''
-                    set -e
-
-                    echo "Checking Production server..."
-
-                    curl -f -I --max-time 10 \
-                        http://10.232.82.222
-
-                    echo "Production health check passed."
-                '''
-            }
+                echo "===================================="
+                echo "PRODUCTION deployment completed!"
+                echo "===================================="
+            '''
         }
     }
 }
