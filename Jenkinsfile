@@ -20,31 +20,28 @@ pipeline {
             }
         }
 
-        stage('Build & Test') {
-            steps {
+stage('Build & Test') {
+    steps {
+        sh '''
+            set -e
 
-                sh '''
-                    set -e
+            echo "PHP Version:"
+            php -v
 
-                    echo "PHP Version:"
-                    php -v
+            echo "Composer Version:"
+            composer --version
 
-                    echo "Composer Version:"
-                    composer --version
+            echo "Installing Composer dependencies..."
+            composer install --prefer-dist --optimize-autoloader
 
-                    echo "Installing Composer dependencies..."
+            echo "Running Laravel tests..."
+            php artisan test
 
-                    composer install \
-                        --no-dev \
-                        --prefer-dist \
-                        --optimize-autoloader
+            echo "Build & Test completed successfully."
+        '''
+    }
+}
 
-                    echo "Running Laravel tests..."
-
-                    php artisan test
-                '''
-            }
-        }
 
         stage('Package') {
             steps {
