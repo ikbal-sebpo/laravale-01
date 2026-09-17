@@ -4,39 +4,49 @@ pipeline {
 
     stages {
 
-        stage('Build & Test') {
-            steps {
+stage('Build & Test') {
+    steps {
+        sh '''
+            set -e
 
-                sh '''
-                    set -e
+            echo "===================================="
+            echo "PHP Version"
+            echo "===================================="
+            php -v
 
-                    echo "===================================="
-                    echo "PHP Version"
-                    echo "===================================="
-                    php -v
+            echo "===================================="
+            echo "Composer Version"
+            echo "===================================="
+            composer --version
 
-                    echo "===================================="
-                    echo "Composer Version"
-                    echo "===================================="
-                    composer --version
+            echo "===================================="
+            echo "Installing Composer dependencies"
+            echo "===================================="
+            composer install --prefer-dist --optimize-autoloader
 
-                    echo "===================================="
-                    echo "Installing Composer dependencies"
-                    echo "===================================="
-                    composer install --prefer-dist --optimize-autoloader
+            echo "===================================="
+            echo "Preparing Laravel Test Environment"
+            echo "===================================="
 
-                    echo "===================================="
-                    echo "Running Laravel Tests"
-                    echo "===================================="
-                    php artisan test
+            cp .env.example .env
 
-                    echo "Build & Test completed successfully."
-                '''
-            }
-        }
+            # Generate a temporary APP_KEY only for Jenkins tests
+            php artisan key:generate --force
+
+            echo "===================================="
+            echo "Running Laravel Tests"
+            echo "===================================="
+            php artisan test
+
+            echo "===================================="
+            echo "Build & Test completed successfully"
+            echo "===================================="
+        '''
+    }
+}
 
 
-        stage('Deploy Staging') {
+ stage('Deploy Staging') {
 
             steps {
 
@@ -50,7 +60,7 @@ pipeline {
                         #!/bin/bash
                         set -e
 
-                        SERVER="10.232.82.220"
+                        SERVER="10.232.82.222"
                         PORT="2221"
                         REMOTE_PATH="/var/www/html/laravale-02"
 
