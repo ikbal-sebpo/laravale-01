@@ -15,7 +15,7 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+       stage('Deploy Staging') {
             steps {
 
                 withCredentials([usernamePassword(
@@ -32,57 +32,96 @@ pipeline {
                         PORT="2221"
                         REMOTE_PATH="/var/www/html/laravale-02"
 
-                        echo "Starting deployment..."
-
-                        echo "Copying files..."
+                        echo "===================================="
+                        echo "Starting STAGING deployment..."
+                        echo "Server: $SERVER"
+                        echo "===================================="
 
                         sshpass -p "$DEPLOY_PASSWORD" \
                         scp -P "$PORT" \
                         -r "$WORKSPACE"/* \
                         "$DEPLOY_USER@$SERVER:$REMOTE_PATH/"
 
-                        echo "Files copied successfully."
-
-                        echo "Installing Composer dependencies..."
+                        echo "Files copied to STAGING."
 
                         sshpass -p "$DEPLOY_PASSWORD" \
                         ssh -p "$PORT" \
                         "$DEPLOY_USER@$SERVER" \
                         "cd $REMOTE_PATH && \
-                         composer install --no-dev --optimize-autoloader"
-
-                        echo "Setting permissions..."
-
-                        sshpass -p "$DEPLOY_PASSWORD" \
-                        ssh -p "$PORT" \
-                        "$DEPLOY_USER@$SERVER" \
-                        "cd $REMOTE_PATH && \
+                         composer install --no-dev --optimize-autoloader && \
                          chown -R apache:apache storage bootstrap/cache && \
-                         chmod -R 775 storage bootstrap/cache"
-
-                        echo "Clearing Laravel caches..."
-
-                        sshpass -p "$DEPLOY_PASSWORD" \
-                        ssh -p "$PORT" \
-                        "$DEPLOY_USER@$SERVER" \
-                        "cd $REMOTE_PATH && \
+                         chmod -R 775 storage bootstrap/cache && \
                          php artisan config:clear && \
                          php artisan cache:clear && \
                          php artisan view:clear && \
-                         php artisan route:clear"
+                         php artisan route:clear && \
+                         php artisan config:cache"
 
-                        echo "Caching Laravel configuration..."
+                        echo "STAGING deployment completed successfully."
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Production') {
+            steps {
+
+                input message: 'Staging deployment successful. Deploy to Production?', 
+                      ok: 'Deploy Production'
+
+                withCredentials([usernamePassword(
+                    credentialsId: 'almalinux-deploy',
+                    usernameVariable: 'DEPLOY_USER',
+                    passwordVariable: 'DEPLOY_PASSWORD'
+                )]) {
+
+                    sh '''
+                        #!/bin/bash
+                        set -e
+
+                        SERVER="10.232.82.222"
+                        PORT="2221"
+                        REMOTE_PATH="/var/www/html/laravale-02"
+
+                        echo "===================================="
+                        echo "Starting PRODUCTION deployment..."
+                        echo "Server: $SERVER"
+                        echo "===================================="
+
+                        sshpass -p "$DEPLOY_PASSWORD" \
+                        scp -P "$PORT" \
+                        -r "$WORKSPACE"/* \
+                        "$DEPLOY_USER@$SERVER:$REMOTE_PATH/"
+
+                        echo "Files copied to PRODUCTION."
 
                         sshpass -p "$DEPLOY_PASSWORD" \
                         ssh -p "$PORT" \
                         "$DEPLOY_USER@$SERVER" \
                         "cd $REMOTE_PATH && \
+                         composer install --no-dev --optimize-autoloader && \
+                         chown -R apache:apache storage bootstrap/cache && \
+                         chmod -R 775 storage bootstrap/cache && \
+                         php artisan config:clear && \
+                         php artisan cache:clear && \
+                         php artisan view:clear && \
+                         php artisan route:clear && \
                          php artisan config:cache"
 
-                        echo "Deployment completed successfully."
+                        echo "PRODUCTION deployment completed successfully."
                     '''
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'Staging and Production deployment completed successfully.'
+        }
+
+        failure {
+            echo 'Deployment failed.'
         }
     }
 }
