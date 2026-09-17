@@ -15,14 +15,12 @@ pipeline {
     stages {
 
         stage('Checkout') {
-
             steps {
                 checkout scm
             }
         }
 
         stage('Build & Test') {
-
             steps {
 
                 sh '''
@@ -35,19 +33,20 @@ pipeline {
                     composer --version
 
                     echo "Installing Composer dependencies..."
+
                     composer install \
                         --no-dev \
                         --prefer-dist \
                         --optimize-autoloader
 
                     echo "Running Laravel tests..."
+
                     php artisan test
                 '''
             }
         }
 
         stage('Package') {
-
             steps {
 
                 sh '''
@@ -67,7 +66,6 @@ pipeline {
         }
 
         stage('Deploy Staging') {
-
             steps {
 
                 withCredentials([usernamePassword(
@@ -97,7 +95,6 @@ pipeline {
         }
 
         stage('Extract & Configure Staging') {
-
             steps {
 
                 withCredentials([usernamePassword(
@@ -131,7 +128,6 @@ pipeline {
         }
 
         stage('Staging Health Check') {
-
             steps {
 
                 sh '''
@@ -148,7 +144,6 @@ pipeline {
         }
 
         stage('SysAdmin Approval') {
-
             steps {
 
                 input(
@@ -159,7 +154,6 @@ pipeline {
         }
 
         stage('Deploy Production') {
-
             steps {
 
                 withCredentials([usernamePassword(
@@ -194,7 +188,7 @@ pipeline {
 
                         echo "Package uploaded to Production."
 
-                        echo "Extracting and configuring application..."
+                        echo "Extracting application..."
 
                         sshpass -p "$DEPLOY_PASSWORD" \
                         ssh -o StrictHostKeyChecking=no \
@@ -218,7 +212,6 @@ pipeline {
         }
 
         stage('Production Health Check') {
-
             steps {
 
                 sh '''
@@ -230,25 +223,8 @@ pipeline {
                         http://10.232.82.222
 
                     echo "Production health check passed."
-                }
+                '''
             }
-        }
-    }
-
-    post {
-
-        success {
-            echo 'Deployment pipeline completed successfully.'
-        }
-
-        failure {
-            echo 'Deployment pipeline failed.'
-        }
-
-        always {
-            sh '''
-                rm -f build.tar.gz || true
-            '''
         }
     }
 }
